@@ -16,6 +16,27 @@ function randomInteger(min, max) {
     return rand;
 }
 
+function randomTextMin() {
+    let arr = [
+        "There is no coffee. Ask you friend to make it for you.",
+        "Oh, you're the lucky one! There is coffee only for you!",
+        "You will be the last one you who will have the coffee now. Enjoy."
+    ]
+    return arr[randomInteger(0, 2)]
+}
+
+function randomTextMax() {
+    let arr = [
+        "The maschine is full of coffee. You are the lucky devil.",
+        "There is enough coffee for two person. May be you have a cup of coffee with you pretty colleague?2",
+        "There is enough coffee for two person. Invite you friend to drink coffee with you. :)"
+    ]
+    return arr[randomInteger(0, 2)]
+}
+function randomTextZ() {
+    return "There is no coffee. Suffer.";
+}
+
 
 function createDB() {
 
@@ -82,7 +103,9 @@ function addUserToBase(id, name, surname, departament) {
         name: name,
         surname: surname,
         userId: id,
-        departament: departament
+        departament: departament,
+        machine1: 1,
+        machine2: 2
     });
     return null;
 }
@@ -118,3 +141,6 @@ module.exports.createDB = createDB;
 module.exports.getFact = getFact;
 module.exports.addUserToBase = addUserToBase;
 module.exports.addFriend = addFriend;
+module.exports.randomTextMin = randomTextMin;
+module.exports.randomTextMax = randomTextMax;
+module.exports.randomTextZ = randomTextZ;

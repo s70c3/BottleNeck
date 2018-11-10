@@ -16,11 +16,13 @@ const GROUP_ID = 173738332;
 
 const http = require("http");
 const querystring = require("querystring");
-const {createDB, getFact, addUserToBase,  addFriend, hasUser} = require("./utils");
+const {createDB, getFact, addUserToBase, addFriend, hasUser, randomTextMin, randomTextMax, randomTextZ} = require("./utils");
 var MongoClient = require('mongodb').MongoClient;
 const VKapi = new (require("./vk-api"))({
     token: GROUP_TOKEN
 });
+
+process.env.TZ = 'Europe/Moscow'
 
 /* --------------------------------------------------------------------- */
 /* ------------------------------ Утилиты ------------------------------ */
@@ -29,6 +31,7 @@ const VKapi = new (require("./vk-api"))({
 String.prototype.format = function (...args) {
     return this.replace(/{(\d+)}/g, (match, index) => args[index]).trim();
 }
+
 
 /**
  * Обрабатывает запрос
@@ -118,7 +121,6 @@ const stages = {
 async function coffeeBotListener(req, res) {
 
 
-
     let form = req.form || req.query;
     if (!form) return res.send("Error.");
 
@@ -141,10 +143,6 @@ async function coffeeBotListener(req, res) {
     if (!userInfo) return sendDebugMessage("Нет userInfo о текущем пользователе");
 
 
-
-
-
-
     try {
         payload = JSON.parse(obj.payload || "{}");
     } catch (e) {
@@ -153,121 +151,274 @@ async function coffeeBotListener(req, res) {
     let cmd = payload.command;
 
     // Запишем возможные текстовые команды, как если бы это были кнопки
-    if (/начать|старт|привет/gi.test(text)) cmd = "start";
+    if (/start|hello|hi/gi.test(text)) cmd = "start";
     if (/\d/gi.test(text)) cmd = "choose friend";
+
+
     //if (//gi.test(text)) cmd = "find_user";
 
-    if (cmd==="choose friend") {
+    if (cmd === "choose friend") {
 
         num = parseInt(text)
         db.collection('users').find().toArray(function (err, items) {
+            name = items[num - 1].name
+            id = items[num - 1].userId
+            let message = `${name} you are invited to drink a cofee by [id${userInfo.id}|${userInfo.name} ${userInfo.surname}]`;
+            m1 = 'Invitation to ' + name + ' sent.'
+            sendMessage(fromId, m1,
+                [{
+                    text: "Home",
+                    type: "primary",
+                    payload: {command: "start"}
+                }]
+                );
 
-        name = items[num-1].name
-            id = items[num-1].userId
-    let message = `${name} you are invited to drink a cofee by [id${userInfo.id}|${userInfo.name} ${userInfo.surname}]`;
-        m1 = 'Invitation to '+ name + ' sent.'
-            sendMessage(fromId, m1);
+            return sendMessage(id, message, [
+                {
+                    text: "I'm coming",
+                    type: "primary",
+                    payload: {command: "friend_agree", id: fromId},
+                    color: "positive"
+                },
+                {
+                    text: "Later",
+                    type: "primary",
+                    payload: {command: "friend_later", id: fromId},
+                    color: "negative"
+                },
+                {
+                    text: "I can't",
+                    type: "primary",
+                    payload: {command: "friend_cant", id: fromId}
+                },
 
-        return sendMessage(id, message, [
-            {
-                text: "I'm coming",
-                type: "primary",
-                payload: {command: "friend_agree", id : fromId}
-            },
-            {
-                text: "Later",
-                type: "primary",
-                payload: {command: "friend_later", id : fromId}
-            },
-            {
-                text: "I can't",
-                type: "primary",
-                payload: {command: "friend_cant", id : fromId}
-            },
-        ]);
+                    {
+                        text: "Home",
+                        type: "primary",
+                        payload: {command: "start", id: fromId},
+                        color: "positive"
+                    }
+
+
+            ]);
 
         });
     }
 
-    if (cmd==="friend_agree") {
+    else if (cmd === "friend_agree") {
         id = payload.id
-        message = 'He/she agreed'
-        return sendMessage(id, message)
-    }
-    if (cmd==="friend_later") {
-        id = payload.id
-        message = 'He/she agreed'
-        return sendMessage(id, message)
-    }
-
-    // Если текст равен "Начать" или есть payload с кнопки
-    if (cmd === "start") {
-        db.collection('users').findOne({userId: fromId}, function(err, document) {
-            console.log(document)
-            if(!document) addUserToBase(fromId, userInfo.name, userInfo.surname, 'testDep')
-        });
-            console.log(text)
-            let message = `Привет, `+ userInfo.name +`! Я бот, который поможет тебе с поиском свежего кофе.`;
-            return sendMessage(fromId, message, [
-                    {
-                        text: "I want coffee",
-                        type: "primary",
-                        payload: {command: "check_coffee"}
-                    },
-
-                    {
-                        text: "Call a friend",
-                        type: "primary",
-                        payload: {command: "call_friend"}
-                    },
-                ]
-            );
-        }
-
-
-    if (cmd === "check_coffee") {
-        let message = 'Interesting fact of this amount of cofee <br> ' + getFact("random");
-        return sendMessage(fromId, message, [
-            {
-                text: "Call a friend",
-                type: "primary",
-                payload: {command: "call_friend"}
-            },
-            {
-                text: "Settings",
-                type: "primary",
-                payload: {command: "settings_coffee"}
-            },
-            {
-                text: "Home",
-                type: "primary",
-                payload: {command: "start"}
-            },
-        ]);
-    }
-
-    //Позвать друга
-    if (cmd === "call_friend") {
-        //console.log("Здесь долэен быть запрос к  :)")
-        let message = `Список работников компании:`;
-        db.collection('users').find().toArray(function (err, items) {
-
-            var m = "\n"
-            for (var i = 0; i < items.length; i++) {
-                m+=i+1
-                m+=" "
-                m+=items[i].name
-                m+=" "
-                m+=items[i].surname
-                m+="\n"
-
-            }
-            console.log(m)
-            return sendMessage(fromId, message+" "+ m, [
+        message = `${userInfo.name} agreed`
+        return sendMessage(id, message,
+            [
                 {
                     text: "Home",
                     type: "primary",
                     payload: {command: "start"}
+                }
+            ]
+        )
+    }
+    if (cmd === "friend_later") {
+        id = payload.id
+        message = `${userInfo.name}  asked to come later`
+        return sendMessage(id, message,
+            [
+                {
+                    text: "Home",
+                    type: "primary",
+                    payload: {command: "start"}
+                }
+            ]
+        )
+    }
+
+    if (cmd === "friend_cant") {
+        id = payload.id
+        message = `${userInfo.name}  doesn\'t want`
+        return sendMessage(id, message,
+            [
+                {
+                    text: "Home",
+                    type: "primary",
+                    payload: {command: "start"}
+                }
+            ]
+        )
+    }
+
+
+    // Если текст равен "Начать" или есть payload с кнопки
+    if (cmd === "start") {
+        db.collection('users').findOne({userId: fromId}, function (err, document) {
+            if (!document) addUserToBase(fromId, userInfo.name, userInfo.surname, 'testDep')
+        });
+        console.log(text)
+        let message = `Hello, ` + userInfo.name + `! I am the bot that will help you to find a hot coffee. :).`;
+        return sendMessage(fromId, message, [
+                {
+                    text: "I want coffee",
+                    type: "primary",
+                    payload: {command: "check_coffee"}
+                },
+
+                {
+                    text: "Call a friend",
+                    type: "primary",
+                    payload: {command: "call_friend"}
+                },
+            {
+                text: "Settings",
+                type: "primary",
+                payload: {command: "settings_coffee"}
+            }
+
+            ]
+        );
+    }
+
+
+
+    if (cmd === "check_coffee") {
+        let machine1;
+        let machine2;
+        let machineID1;
+        let recommendation1;
+        let recommendation2;
+
+        db.collection('users').findOne({userId: fromId}, (err, data) => {
+            machine1 = data.machine1;
+            machine2 = data.machine2;
+
+            db.collection('dayLog').findOne({machineID: machine1}, function (err, data) {
+                machineID1 = data;
+
+                db.collection('dayLog').findOne({machineID: machine2}, function (err, data) {
+                    machineID2 = data;
+
+                  //  console.log("machineID1: ", machineID1);
+                    // console.log("machineID2: ", machineID2);
+
+                    if (machineID1.value < 50 && machineID1.value !== 0) recommendation1 = randomTextMin();
+                    else if (machineID1.value === 0) recommendation1 = randomTextZ();
+                    else recommendation1 = randomTextMax();
+
+                    if (machineID2.value < 50 && machineID2.value !== 0) recommendation2 = randomTextMin();
+                    else if (machineID2.value === 0) recommendation2 = randomTextZ();
+                    else recommendation2 = randomTextMax();
+
+                    let message = `Information on the status of coffee machines:
+
+                    ****machine 1:
+                    value: ${machineID1.value}
+                    time: ${machineID1.time.getHours()}:${machineID1.time.getMinutes()}:${machineID1.time.getSeconds()}
+                    recommendation: ${recommendation1}
+        
+                    ****machine 2:
+                    value: ${machineID2.value}
+                    time: ${machineID2.time.getHours()}:${machineID2.time.getMinutes()}:${machineID2.time.getSeconds()}
+                    recommendation: ${recommendation2}
+        
+                    ` + getFact(machineID2.value);
+
+                    sendMessage(fromId, message, [
+                        {
+                            text: "Call a friend",
+                            type: "primary",
+                            payload: {command: "call_friend"}
+                        },
+                        {
+                            text: "Settings",
+                            type: "primary",
+                            payload: {command: "settings_coffee"}
+                        },
+                        {
+                            text: "Home",
+                            type: "primary",
+                            payload: {command: "start"}
+                        },
+                    ]);
+
+                });
+            });
+        })
+    };
+
+    if (cmd === "settings_coffee") {
+        console.log('settings')
+        let message = 'Choose the one most usable machine for you';
+        console.log(2)
+        sendMessage(fromId, message, [
+                {
+                    text: "machine1",
+                    type: "primary",
+                    payload: {command: "setm", number:1}
+                },
+                {
+                    text: "machine2",
+                    type: "primary",
+                    payload: {command: "setm", number:2}
+                },
+                {
+                    text: "machine3",
+                    type: "primary",
+                    payload: {command: "setm", number:3}
+                },
+                {
+                    text: "machine4",
+                    type: "primary",
+                    payload: {command: "setm", number:4}
+                },
+                {
+                    text: "machine4",
+                    type: "primary",
+                    payload: {command: "setm", number:5}
+                }
+            ]
+        );
+    }
+
+
+    // if (cmd = "setm") {
+    //     db.collection('users').updateOne({userId: fromId}, (err, data) => {
+    //         $set: {machine1: payload.number}
+    //         return sendMessage(fromId, message, [
+    //                 {
+    //                     text: "Home",
+    //                     type: "primary",
+    //                     payload: {command: "start"}
+    //                 }]);
+    //
+    //     })
+    //
+    // }
+
+
+    //Позвать друга
+    if (cmd === "call_friend") {
+        //console.log("Здесь долэен быть запрос к  :)")
+        let message = `List of employees:`;
+        db.collection('users').find().toArray(function (err, items) {
+
+            var m = "\n"
+            for (var i = 0; i < items.length; i++) {
+                m += i + 1
+                m += " "
+                m += items[i].name
+                m += " "
+                m += items[i].surname
+                m += "\n"
+
+            }
+            return sendMessage(fromId, message + " " + m, [
+                {
+                    text: "Home",
+                    type: "primary",
+                    payload: {command: "start"}
+                },
+                {
+                    text: "Send",
+                    type: "primary",
+                    payload: {command: "send"}
                 },
             ]);
         })
@@ -275,7 +426,6 @@ async function coffeeBotListener(req, res) {
 
     //Выбор кофеварок
     if (cmd === "settings_coffee") {
-        //console.log("Здесь долэен быть выбор кофеварок :)")
         let message = `Выберите, что вы хотите настроить. :)`;
         return sendMessage(fromId, message, [
             {
@@ -287,27 +437,22 @@ async function coffeeBotListener(req, res) {
                 text: "CofeeMachines",
                 type: "primary",
                 payload: {command: "set_cm"}
-            },
-            {
-                text: "Friends",
-                type: "primary",
-                payload: {command: "set_friends"}
-            },
+            }
         ]);
     }
 }
 
-    /**
+/**
 
-     sendMessage(peerId, text, [
-     {
+ sendMessage(peerId, text, [
+ {
 			text: "Найти собеседника по интересам",
 			type: "primary",
 			payload: { command: "find_user" }
 		}
-     ]);
+ ]);
 
-     */
+ */
 
 function sendMessage(peerId, text, keyboardButtons) {
     let apiOpts = {
@@ -357,7 +502,7 @@ function getUsers(userIds) {
                         users[u.id] = {
                             id: u.id,
                             name: `${u.first_name}`,
-                            surname:`${u.last_name}`,
+                            surname: `${u.last_name}`,
                             sex: u.sex === 1 ? "female" : "male",
                         }
                     });
@@ -375,7 +520,7 @@ function getUsers(userIds) {
 /* --------------------------------------------------------------------- */
 
 
-MongoClient.connect('mongodb://localhost:27017/', function(err, client) {
+MongoClient.connect('mongodb://localhost:27017/', function (err, client) {
     db = client.db("bot");
 
     if (err) {
@@ -384,9 +529,7 @@ MongoClient.connect('mongodb://localhost:27017/', function(err, client) {
 });
 
 http.createServer((req, res) => {
-    //console.log("Start");
-    //console.log(req);
-    //console.log(res);
+
     try {
         processBasicGetPostRequest(req, res, coffeeBotListener)
     } catch (e) {
