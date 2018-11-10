@@ -164,16 +164,41 @@ async function coffeeBotListener(req, res) {
 
         name = items[num-1].name
             id = items[num-1].userId
-            let message = `${name} you are invited to drink a cofee by [id${userInfo.id}|${userInfo.name} ${userInfo.surname}]`;
+    let message = `${name} you are invited to drink a cofee by [id${userInfo.id}|${userInfo.name} ${userInfo.surname}]`;
         m1 = 'Invitation to '+ name + ' sent.'
             sendMessage(fromId, m1);
 
-        return sendMessage(id, message);
+        return sendMessage(id, message, [
+            {
+                text: "I'm coming",
+                type: "primary",
+                payload: {command: "friend_agree", id : fromId}
+            },
+            {
+                text: "Later",
+                type: "primary",
+                payload: {command: "friend_later", id : fromId}
+            },
+            {
+                text: "I can't",
+                type: "primary",
+                payload: {command: "friend_cant", id : fromId}
+            },
+        ]);
 
         });
     }
 
-
+    if (cmd==="friend_agree") {
+        id = payload.id
+        message = 'He/she agreed'
+        return sendMessage(id, message)
+    }
+    if (cmd==="friend_later") {
+        id = payload.id
+        message = 'He/she agreed'
+        return sendMessage(id, message)
+    }
 
     // Если текст равен "Начать" или есть payload с кнопки
     if (cmd === "start") {
