@@ -157,6 +157,23 @@ async function coffeeBotListener(req, res) {
     if (/\d/gi.test(text)) cmd = "choose friend";
     //if (//gi.test(text)) cmd = "find_user";
 
+    if (cmd==="choose friend") {
+
+        num = parseInt(text)
+        db.collection('users').find().toArray(function (err, items) {
+
+        name = items[num-1].name
+            id = items[num-1].userId
+            let message = `${name} you are invited to drink a cofee by [id${userInfo.id}|${userInfo.name} ${userInfo.surname}]`;
+        m1 = 'Invitation to '+ name + ' sent.'
+            sendMessage(fromId, m1);
+
+        return sendMessage(id, message);
+
+        });
+    }
+
+
 
     // Если текст равен "Начать" или есть payload с кнопки
     if (cmd === "start") {
