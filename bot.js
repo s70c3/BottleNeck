@@ -286,14 +286,17 @@ async function coffeeBotListener(req, res) {
         let recommendation2;
 
         db.collection('users').findOne({userId: fromId}, (err, data) => {
+        //db.collection('users').find({userId: fromId}).sort({'time': -1}).limit(1).toArray{(err, data) => {
             machine1 = data.machine1;
             machine2 = data.machine2;
 
-            db.collection('dayLog').findOne({machineID: machine1}, function (err, data) {
-                machineID1 = data;
+            //db.collection('dayLog').findOne({machineID: machine1}, function (err, data) {
+            db.collection('dayLog').find({machineID: machine1}).sort({'time': -1}).limit(1).toArray( function (err, data) {
+                //console.log("*********", data[0]);
+                machineID1 = data[0];
 
-                db.collection('dayLog').findOne({machineID: machine2}, function (err, data) {
-                    machineID2 = data;
+                db.collection('dayLog').find({machineID: machine2}).sort({'time': -1}).limit(1).toArray( function (err, data) {
+                    machineID2 = data[0];
 
                   //  console.log("machineID1: ", machineID1);
                     // console.log("machineID2: ", machineID2);
@@ -306,19 +309,17 @@ async function coffeeBotListener(req, res) {
                     else if (machineID2.value === 0) recommendation2 = randomTextZ();
                     else recommendation2 = randomTextMax();
 
-                    let message = `Information on the status of coffee machines:
+                    let message = `${recommendation1}
 
-                    ****machine 1:
-                    value: ${machineID1.value}
-                    time: ${machineID1.time.getHours()}:${machineID1.time.getMinutes()}:${machineID1.time.getSeconds()}
-                    recommendation: ${recommendation1}
-        
-                    ****machine 2:
-                    value: ${machineID2.value}
-                    time: ${machineID2.time.getHours()}:${machineID2.time.getMinutes()}:${machineID2.time.getSeconds()}
-                    recommendation: ${recommendation2}
-        
-                    ` + getFact(machineID2.value);
+****machine 1:
+value: ${machineID1.value}
+time: ${machineID1.time.getHours()}:${machineID1.time.getMinutes()}:${machineID1.time.getSeconds()}
+
+****machine 2:
+value: ${machineID2.value}
+time: ${machineID2.time.getHours()}:${machineID2.time.getMinutes()}:${machineID2.time.getSeconds()}
+
+` + getFact(machineID2.value);
 
                     sendMessage(fromId, message, [
                         {
